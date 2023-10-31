@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/HiBye-miniapp/static/css/main.c26a3270.css",
+    "main.js": "/HiBye-miniapp/static/js/main.5f91ca96.js",
+    "index.html": "/HiBye-miniapp/index.html",
+    "main.c26a3270.css.map": "/HiBye-miniapp/static/css/main.c26a3270.css.map",
+    "main.5f91ca96.js.map": "/HiBye-miniapp/static/js/main.5f91ca96.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.c26a3270.css",
+    "static/js/main.5f91ca96.js"
+  ]
+}
