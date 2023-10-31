@@ -1,0 +1,24 @@
+.event {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.event h3 {
+    margin: 0;
+    flex: 2;  /* Take more width for the title */
+}
+
+.event p {
+    margin: 0;
+    flex: 1;  /* Take less width for the datetime */
+}
+
+.event button {
+    background-color: #f4f4f4;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 8px;  /* Adding rounded corners */
+}
