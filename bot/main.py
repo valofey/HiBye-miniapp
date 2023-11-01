@@ -1,69 +1,95 @@
-#!/usr/bin/env python
-# pylint: disable=unused-argument
-# This program is dedicated to the public domain under the CC0 license.
-
-"""
-Simple example of a Telegram WebApp which displays a color picker.
-The static website for this website is hosted by the PTB team for your convenience.
-Currently only showcases starting the WebApp via a KeyboardButton, as all other methods would
-require a bot token.
-"""
+import asyncio
 import json
-import logging
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Updater
 
-from telegram import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, WebAppInfo
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+# Constants
+JSON_FILE_PATH = "example_userdata.json"
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-# set higher logging level for httpx to avoid all GET and POST requests being logged
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# Backend Interaction
+class Backend:
+    @staticmethod
+    async def fetch_user_events():
+        with open(JSON_FILE_PATH, 'r') as file:
+            data = json.load(file)
+        events = data.get("events", [])
+        events.sort(key=lambda event: event["datetime"], reverse=True)
+        return events
 
-logger = logging.getLogger(__name__)
+# User State Management
+class UserState:
+    def __init__(self):
+        self.states = {}
 
+    def get_state(self, chat_id):
+        return self.states.get(chat_id, 'start')
 
-# Define a `/start` command handler.
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message with a button that opens a the web app."""
-    await update.message.reply_text(
-        "Please press the button below to choose a color via the WebApp.",
-        reply_markup=ReplyKeyboardMarkup.from_button(
-            KeyboardButton(
-                text="Open the color picker!",
-                web_app=WebAppInfo(url="https://python-telegram-bot.org/static/webappbot"),
-            )
-        ),
-    )
+    def update_state(self, chat_id, new_state):
+        self.states[chat_id] = new_state
 
+user_state = UserState()
 
-# Handle incoming WebAppData
-async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Print the received data and remove the button."""
-    # Here we use `json.loads`, since the WebApp sends the data JSON serialized string
-    # (see webappbot.html)
-    data = json.loads(update.effective_message.web_app_data.data)
-    await update.message.reply_html(
-        text=(
-            f"You selected the color with the HEX value <code>{data['hex']}</code>. The "
-            f"corresponding RGB value is <code>{tuple(data['rgb'].values())}</code>."
-        ),
-        reply_markup=ReplyKeyboardRemove(),
-    )
+# Bot Handlers
+class BotHandlers:
+    @staticmethod
+    async def handle_start(bot, chat_id):
+        user_state.update_state(chat_id, 'start')
+        user_events = await Backend.fetch_user_events()
+        await BotMessages.send_welcome_message(bot, chat_id, user_events)
+        user_state.update_state(chat_id, 'event_selection')
 
+    @staticmethod
+    async def handle_button_click(bot, chat_id, callback_query):
+        if user_state.get_state(chat_id) != 'event_selection':
+            return  # Ignore if not in the correct state
 
-def main() -> None:
-    """Start the bot."""
-    # Create the Application and pass it your bot's token.
-    application = Application.builder().token("6692393342:AAGebpXCd771TC79KKlxX_rGQWPhMpOWUXg").build()
+        button_data = callback_query.data
+        if button_data.startswith("Event"):
+            await bot.send_message(chat_id, f"You selected: {button_data}.")
+            await callback_query.answer()  # Acknowledge the button click
+            user_state.update_state(chat_id, 'event_selected')
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+# Bot Messages
+class BotMessages:
+    @staticmethod
+    async def send_welcome_message(bot, chat_id, events):
+        buttons = [InlineKeyboardButton(event["name"], callback_data=f"Event: {event['name']}") for event in events]
+        await bot.send_message(
+            chat_id,
+            "Hello! Welcome to the bot. Please choose an event:",
+            reply_markup=InlineKeyboardMarkup([buttons],web_app=WebAppInfo(url="https://valofey.github.io/HiBye-miniapp"),)
+        )
 
-    # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+# Main Bot Functionality
+async def handle_update(bot, update):
+    if update.callback_query:
+        chat_id = update.callback_query.message.chat.id
+        await BotHandlers.handle_button_click(bot, chat_id, update.callback_query)
+    elif update.message:
+        chat_id = update.message.chat.id
+        text = update.message.text
+        if text == "/start":
+            await BotHandlers.handle_start(bot, chat_id)
 
+async def main():
+    bot_token = "6692393342:AAGebpXCd771TC79KKlxX_rGQWPhMpOWUXg"
+    bot_instance = Bot(token=bot_token)
+    update_queue = asyncio.Queue()
+    updater = Updater(bot=bot_instance, update_queue=update_queue)
 
-if __name__ == "__main__":
-    main()
+    await updater.initialize()
+    await updater.start_polling()
+
+    while True:
+        update = await update_queue.get()
+        await handle_update(bot_instance, update)
+
+if __name__ == '__main__':
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(main())
+        else:
+            raise RuntimeError("Obtained an inactive event loop unexpectedly.")
+    except RuntimeError as e:
+        asyncio.run(main())
