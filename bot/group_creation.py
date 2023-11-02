@@ -1,18 +1,15 @@
 import asyncio
 
-import pyrogram
 import json
 from pyrogram import Client as UserClient
-from telegram import Bot
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, \
-    ReplyKeyboardRemove, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from flask import Flask, request, jsonify
 import threading
 
-from bot import Repository
-from bot.entity.Functions import Functions
-from bot.entity.User import User
+import Repository
+from entity.Functions import Functions
+from entity.User import User
 
 user_api_id = '25853205'
 user_api_hash = 'f6ea9ef789298284f70816625346f457'

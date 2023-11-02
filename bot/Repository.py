@@ -1,6 +1,6 @@
 import random
 
-from bot.entity.User import User
+from entity.User import User
 
 users = dict()
 users_already_met = dict()
